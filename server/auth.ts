@@ -48,17 +48,31 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        console.log("Login attempt:", { username });
         const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
+        console.log("User found:", user ? "Yes" : "No");
+        
+        if (!user) {
+          console.log("Authentication failed: User not found");
           return done(null, false);
-        } else {
-          // Update last login time
-          await storage.updateUser(user.id, {
-            lastLogin: new Date()
-          });
-          return done(null, user);
         }
+        
+        const passwordMatch = await comparePasswords(password, user.password);
+        console.log("Password match:", passwordMatch ? "Yes" : "No");
+        
+        if (!passwordMatch) {
+          console.log("Authentication failed: Password mismatch");
+          return done(null, false);
+        }
+        
+        // Update last login time
+        await storage.updateUser(user.id, {
+          lastLogin: new Date()
+        });
+        console.log("Authentication successful for user:", username);
+        return done(null, user);
       } catch (error) {
+        console.error("Authentication error:", error);
         return done(error);
       }
     }),
@@ -97,8 +111,26 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+  app.post("/api/login", (req, res, next) => {
+    console.log("Login request received:", req.body);
+    passport.authenticate("local", (err, user, info) => {
+      if (err) {
+        console.error("Login error:", err);
+        return next(err);
+      }
+      if (!user) {
+        console.log("Login failed: user not authenticated");
+        return res.status(401).json({ message: "Nom d'utilisateur ou mot de passe incorrect" });
+      }
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Login session error:", err);
+          return next(err);
+        }
+        console.log("Login successful, session established");
+        return res.status(200).json(user);
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
