@@ -5,6 +5,11 @@ import { setupAuth } from "./auth";
 import { insertEmissionDataSchema, insertEmissionDetailSchema, insertReportSchema, insertCompanySchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Test route to check if API is accessible
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", message: "API is working!" });
+  });
+  
   // Setup authentication routes
   setupAuth(app);
   
