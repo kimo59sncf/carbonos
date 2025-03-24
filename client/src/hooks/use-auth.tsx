@@ -35,6 +35,12 @@ function AuthProvider({ children }: { children: ReactNode }) {
   } = useQuery<SelectUser | undefined, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    onSuccess: (data) => {
+      console.log("Auth user query successful:", data);
+    },
+    onError: (error) => {
+      console.error("Auth user query error:", error);
+    }
   });
 
   // Login mutation

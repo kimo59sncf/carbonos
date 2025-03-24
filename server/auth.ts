@@ -36,10 +36,10 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     name: "carbonos.sid", // Nom personnalisé pour le cookie
     cookie: {
-      secure: false, // En développement, nous n'utilisons pas HTTPS  
-      httpOnly: true,
-      sameSite: "lax", // lax pour permettre la navigation entre les pages
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      secure: false,
+      httpOnly: false, // Permettre l'accès aux cookies via JavaScript
+      sameSite: "lax", 
+      maxAge: 24 * 60 * 60 * 1000, // 1 jour
       path: "/"
     }
   };
