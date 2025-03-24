@@ -1,0 +1,267 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { setupAuth } from "./auth";
+import { insertEmissionDataSchema, insertEmissionDetailSchema, insertReportSchema, insertCompanySchema } from "@shared/schema";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication routes
+  setupAuth(app);
+  
+  // Companies API
+  app.get("/api/companies", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const companies = await storage.getCompanies();
+      res.json(companies);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      res.status(500).json({ message: "Error fetching companies" });
+    }
+  });
+  
+  app.get("/api/companies/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const company = await storage.getCompany(parseInt(req.params.id));
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      res.json(company);
+    } catch (error) {
+      console.error("Error fetching company:", error);
+      res.status(500).json({ message: "Error fetching company" });
+    }
+  });
+  
+  app.post("/api/companies", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const validatedData = insertCompanySchema.parse(req.body);
+      const company = await storage.createCompany(validatedData);
+      res.status(201).json(company);
+    } catch (error) {
+      console.error("Error creating company:", error);
+      res.status(400).json({ message: "Invalid company data" });
+    }
+  });
+  
+  app.put("/api/companies/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const companyId = parseInt(req.params.id);
+      const updatedCompany = await storage.updateCompany(companyId, req.body);
+      if (!updatedCompany) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      res.json(updatedCompany);
+    } catch (error) {
+      console.error("Error updating company:", error);
+      res.status(500).json({ message: "Error updating company" });
+    }
+  });
+  
+  // Emission Data API
+  app.get("/api/emissions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const companyId = req.query.companyId ? parseInt(req.query.companyId as string) : (req.user?.companyId || 1);
+      const emissionData = await storage.getEmissionDataByCompany(companyId);
+      res.json(emissionData);
+    } catch (error) {
+      console.error("Error fetching emission data:", error);
+      res.status(500).json({ message: "Error fetching emission data" });
+    }
+  });
+  
+  app.get("/api/emissions/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const emissionData = await storage.getEmissionData(parseInt(req.params.id));
+      if (!emissionData) {
+        return res.status(404).json({ message: "Emission data not found" });
+      }
+      
+      // Get associated emission details
+      const details = await storage.getEmissionDetails(emissionData.id);
+      
+      res.json({ ...emissionData, details });
+    } catch (error) {
+      console.error("Error fetching emission data:", error);
+      res.status(500).json({ message: "Error fetching emission data" });
+    }
+  });
+  
+  app.post("/api/emissions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const validatedData = insertEmissionDataSchema.parse(req.body);
+      const emissionData = await storage.createEmissionData({
+        ...validatedData,
+        submittedBy: req.user?.id
+      });
+      res.status(201).json(emissionData);
+    } catch (error) {
+      console.error("Error creating emission data:", error);
+      res.status(400).json({ message: "Invalid emission data" });
+    }
+  });
+  
+  app.post("/api/emission-details", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const validatedData = insertEmissionDetailSchema.parse(req.body);
+      const emissionDetail = await storage.createEmissionDetail(validatedData);
+      res.status(201).json(emissionDetail);
+    } catch (error) {
+      console.error("Error creating emission detail:", error);
+      res.status(400).json({ message: "Invalid emission detail data" });
+    }
+  });
+  
+  app.put("/api/emissions/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const emissionId = parseInt(req.params.id);
+      const updatedEmission = await storage.updateEmissionData(emissionId, req.body);
+      if (!updatedEmission) {
+        return res.status(404).json({ message: "Emission data not found" });
+      }
+      res.json(updatedEmission);
+    } catch (error) {
+      console.error("Error updating emission data:", error);
+      res.status(500).json({ message: "Error updating emission data" });
+    }
+  });
+  
+  // Reports API
+  app.get("/api/reports", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const companyId = req.query.companyId ? parseInt(req.query.companyId as string) : (req.user?.companyId || 1);
+      const reports = await storage.getReportsByCompany(companyId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+      res.status(500).json({ message: "Error fetching reports" });
+    }
+  });
+  
+  app.get("/api/reports/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const report = await storage.getReport(parseInt(req.params.id));
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching report:", error);
+      res.status(500).json({ message: "Error fetching report" });
+    }
+  });
+  
+  app.post("/api/reports", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const validatedData = insertReportSchema.parse(req.body);
+      const report = await storage.createReport({
+        ...validatedData,
+        createdBy: req.user?.id
+      });
+      res.status(201).json(report);
+    } catch (error) {
+      console.error("Error creating report:", error);
+      res.status(400).json({ message: "Invalid report data" });
+    }
+  });
+  
+  // Dashboard API
+  app.get("/api/dashboard", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const companyId = req.user?.companyId || 1;
+      const emissionData = await storage.getEmissionDataByCompany(companyId);
+      
+      // Get the latest emission data
+      const latestEmissionData = emissionData.length > 0 
+        ? emissionData.reduce((latest, current) => 
+            latest.reportingYear > current.reportingYear ? latest : current)
+        : null;
+      
+      res.json({
+        summary: latestEmissionData ? {
+          scope1: latestEmissionData.scope1Total,
+          scope2: latestEmissionData.scope2Total,
+          scope3: latestEmissionData.scope3Total,
+          total: latestEmissionData.totalEmissions
+        } : null,
+        emissionTrend: emissionData
+          .sort((a, b) => a.reportingYear - b.reportingYear)
+          .map(data => ({
+            year: data.reportingYear,
+            period: data.reportingPeriod,
+            scope1: data.scope1Total,
+            scope2: data.scope2Total,
+            scope3: data.scope3Total,
+            total: data.totalEmissions
+          })),
+        // Example regulatory deadlines - in a real app these would come from a database
+        deadlines: [
+          {
+            name: "BEGES",
+            description: "Bilan d'Émissions de Gaz à Effet de Serre",
+            dueDate: "2023-12-31",
+            status: "pending"
+          },
+          {
+            name: "CSRD",
+            description: "Corporate Sustainability Reporting Directive",
+            dueDate: "2023-05-15",
+            status: "completed"
+          }
+        ],
+        // Example benchmarks - in a real app these would be calculated based on actual data
+        benchmarks: [
+          {
+            indicator: "Émissions totales / CA",
+            value: "42 tCO₂e/M€",
+            average: "56 tCO₂e/M€",
+            position: "top25"
+          },
+          {
+            indicator: "Émissions totales / employé",
+            value: "8.1 tCO₂e/employé",
+            average: "7.3 tCO₂e/employé",
+            position: "median"
+          },
+          {
+            indicator: "Ratio Scope 1+2 / Scope 3",
+            value: "1:4.1",
+            average: "1:3.2",
+            position: "bottom33"
+          }
+        ]
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      res.status(500).json({ message: "Error fetching dashboard data" });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
