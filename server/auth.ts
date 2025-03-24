@@ -31,14 +31,16 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "carbon-os-secret-key",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     store: storage.sessionStore,
+    name: "carbonos.sid", // Nom personnalisé pour le cookie
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: false, // En développement, nous n'utilisons pas HTTPS  
       httpOnly: true,
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000 // 1 day
+      sameSite: "lax", // lax pour permettre la navigation entre les pages
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      path: "/"
     }
   };
 
@@ -80,12 +82,24 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
+  passport.serializeUser((user, done) => {
+    console.log("Serializing user:", user.id);
+    done(null, user.id);
+  });
+  
   passport.deserializeUser(async (id: number, done) => {
+    console.log("Deserializing user id:", id);
     try {
       const user = await storage.getUser(id);
-      done(null, user);
+      console.log("Deserialized user found:", user ? "Yes" : "No");
+      if (user) {
+        done(null, user);
+      } else {
+        console.log("User not found during deserialization");
+        done(null, false);
+      }
     } catch (error) {
+      console.error("Error deserializing user:", error);
       done(error);
     }
   });
@@ -115,6 +129,9 @@ export function setupAuth(app: Express) {
 
   app.post("/api/login", (req, res, next) => {
     console.log("Login request received:", req.body);
+    console.log("Login - Session ID before auth:", req.sessionID);
+    console.log("Login - Session before auth:", req.session);
+
     passport.authenticate("local", (err: any, user: Express.User | false, info: any) => {
       if (err) {
         console.error("Login error:", err);
@@ -124,13 +141,27 @@ export function setupAuth(app: Express) {
         console.log("Login failed: user not authenticated");
         return res.status(401).json({ message: "Nom d'utilisateur ou mot de passe incorrect" });
       }
+      
       req.login(user, (err) => {
         if (err) {
           console.error("Login session error:", err);
           return next(err);
         }
+        
         console.log("Login successful, session established");
-        return res.status(200).json(user);
+        console.log("Login - Session ID after login:", req.sessionID);
+        console.log("Login - Session after login:", req.session);
+        console.log("Login - User is authenticated:", req.isAuthenticated());
+        
+        // Force session save to ensure data is persisted immediately
+        req.session.save((err) => {
+          if (err) {
+            console.error("Session save error:", err);
+            return next(err);
+          }
+          console.log("Session saved successfully");
+          return res.status(200).json(user);
+        });
       });
     })(req, res, next);
   });
@@ -143,7 +174,18 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    console.log("GET /api/user - Session ID:", req.sessionID);
+    console.log("GET /api/user - Is authenticated:", req.isAuthenticated());
+    console.log("GET /api/user - User:", req.user);
+    console.log("GET /api/user - Session:", req.session);
+    console.log("GET /api/user - Cookies:", req.headers.cookie);
+    
+    if (!req.isAuthenticated()) {
+      console.log("GET /api/user - Not authenticated, returning 401");
+      return res.sendStatus(401);
+    }
+    
+    console.log("GET /api/user - Authenticated, returning user data");
     res.json(req.user);
   });
 }
