@@ -36,6 +36,8 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     cookie: {
       secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     }
   };
@@ -113,7 +115,7 @@ export function setupAuth(app: Express) {
 
   app.post("/api/login", (req, res, next) => {
     console.log("Login request received:", req.body);
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: any, user: Express.User | false, info: any) => {
       if (err) {
         console.error("Login error:", err);
         return next(err);
