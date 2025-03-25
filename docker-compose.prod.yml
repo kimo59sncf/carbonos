@@ -1,0 +1,119 @@
+version: '3'
+
+services:
+  # Service frontend
+  frontend:
+    image: node:20
+    container_name: carbonos-frontend
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install && npm run build && npx serve -s build -l 3000"
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - carbonos-network
+    depends_on:
+      - backend
+
+  # Service backend
+  backend:
+    image: node:20
+    container_name: carbonos-backend
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    command: sh -c "npm install && node src/server.js"
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=carbonos
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+    networks:
+      - carbonos-network
+    depends_on:
+      - db
+
+  # Service base de données
+  db:
+    image: postgres:15
+    container_name: carbonos-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=carbonos
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - carbonos-network
+
+  # Service nginx pour le proxy inverse
+  nginx:
+    image: nginx:latest
+    container_name: carbonos-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend/build:/usr/share/nginx/html
+      - ./ssl:/etc/nginx/ssl
+    networks:
+      - carbonos-network
+    depends_on:
+      - frontend
+      - backend
+
+  # Service Prometheus pour le monitoring
+  prometheus:
+    image: prom/prometheus
+    container_name: carbonos-prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - carbonos-network
+    depends_on:
+      - backend
+
+  # Service Grafana pour la visualisation du monitoring
+  grafana:
+    image: grafana/grafana
+    container_name: carbonos-grafana
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - carbonos-network
+    depends_on:
+      - prometheus
+
+networks:
+  carbonos-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  prometheus-data:
+  grafana-data:
