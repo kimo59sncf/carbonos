@@ -26,7 +26,7 @@ export async function apiRequest(
       method,
       headers: data ? { "Content-Type": "application/json" } : {},
       body: data ? JSON.stringify(data) : undefined,
-      credentials: "same-origin",
+      credentials: "include",
     });
     
     console.log(`API Response: ${res.status} from ${url}`);
@@ -49,7 +49,7 @@ export const getQueryFn: <T>(options: {
     
     try {
       const res = await fetch(queryKey[0] as string, {
-        credentials: "same-origin",
+        credentials: "include",
       });
       
       console.log(`Query Response: ${res.status} from ${queryKey[0]}`);

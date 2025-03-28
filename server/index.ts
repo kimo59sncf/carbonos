@@ -6,15 +6,12 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Configuration CORS pour le développement
+// Configuration minimale pour le développement
+// Pas besoin de CORS car Vite et Express partagent le même domaine
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Préflight OPTIONS
+  // Logger les requêtes pour le débogage
   if (req.method === 'OPTIONS') {
+    console.log('OPTIONS request received');
     return res.sendStatus(200);
   }
   next();

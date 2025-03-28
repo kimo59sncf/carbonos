@@ -31,16 +31,15 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "carbon-os-secret-key",
-    resave: true,
-    saveUninitialized: true,
+    resave: false,
+    saveUninitialized: false,
     store: storage.sessionStore,
-    name: "carbonos.sid", // Nom personnalisé pour le cookie
+    name: "carbonos.sid", 
     cookie: {
-      secure: false,
-      httpOnly: false, // Permettre l'accès aux cookies via JavaScript
-      sameSite: "lax", 
-      maxAge: 24 * 60 * 60 * 1000, // 1 jour
-      path: "/"
+      secure: false, // Pas de HTTPS en développement
+      httpOnly: true, 
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000 // 1 jour
     }
   };
 
