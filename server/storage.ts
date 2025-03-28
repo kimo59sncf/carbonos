@@ -59,8 +59,8 @@ export class MemStorage implements IStorage {
     this.emissionDetailStore = new Map();
     this.reportStore = new Map();
     
-    this.currentUserId = 1;
-    this.currentCompanyId = 1;
+    this.currentUserId = 3; // Commencer à 3 pour laisser la place aux utilisateurs de test
+    this.currentCompanyId = 2; // Commencer à 2 pour laisser la place à l'entreprise de test
     this.currentEmissionDataId = 1;
     this.currentEmissionDetailId = 1;
     this.currentReportId = 1;
@@ -69,22 +69,61 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000 // 1 day
     });
     
+    // Créer des utilisateurs de démonstration
+    // Mdp: Demo2023!
+    const demoUser = {
+      id: 1,
+      username: "demo",
+      password: "9d4e1e23bd5b727046a9e3b4b7db57bd8d6ee684d8a2ff8003fc7f57b690cb1a.25ab86bed149ca6ca9c1c0d5db7c9a91",
+      firstName: "Utilisateur",
+      lastName: "Démo",
+      email: "demo@carbonos.fr",
+      role: "user",
+      consentDataProcessing: true,
+      isActive: true,
+      companyId: 1,
+      lastLogin: new Date()
+    };
+    
+    // Mdp: Admin2023!
+    const adminUser = {
+      id: 2,
+      username: "admin",
+      password: "9d4e1e23bd5b727046a9e3b4b7db57bd8d6ee684d8a2ff8003fc7f57b690cb1a.25ab86bed149ca6ca9c1c0d5db7c9a91",
+      firstName: "Administrateur",
+      lastName: "Système",
+      email: "admin@carbonos.fr",
+      role: "admin",
+      consentDataProcessing: true,
+      isActive: true,
+      companyId: 1,
+      lastLogin: new Date()
+    };
+    
+    // Ajouter les utilisateurs directement dans le store
+    this.userStore.set(demoUser.id, demoUser);
+    this.userStore.set(adminUser.id, adminUser);
+    
     // Initialize with a sample company
-    this.createCompany({
-      name: "Entreprise Exemple",
-      sector: "Industrie manufacturière",
-      sectorCode: "C",
-      employeeCount: 250,
-      address: "123 Rue de l'Industrie",
-      postalCode: "75001",
+    const demoCompany = {
+      id: 1,
+      name: "CarbonOS Démo",
+      sector: "Technologies de l'information",
+      sectorCode: "J.62",
+      employeeCount: 120,
+      address: "123 Rue de l'Innovation",
+      postalCode: "75008",
       city: "Paris",
       country: "France",
-      siret: "12345678900012",
-      dpoName: "Jean Dupont",
-      dpoEmail: "jean.dupont@exemple.fr",
+      siret: "98765432100012",
+      dpoName: "Sophie Martin",
+      dpoEmail: "dpo@carbonos.fr",
       dpoPhone: "+33123456789",
       dpoIsExternal: false
-    });
+    };
+    
+    // Ajouter l'entreprise directement dans le store
+    this.companyStore.set(demoCompany.id, demoCompany);
   }
 
   // User methods
