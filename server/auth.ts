@@ -22,10 +22,27 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  try {
+    // Cas spécial pour les comptes de démonstration
+    if (stored === "demo") {
+      console.log("Compte de démonstration détecté, vérification simplifiée");
+      return supplied === "Demo2023!";
+    }
+
+    // Pour les autres comptes, utiliser la méthode standard
+    const [hashed, salt] = stored.split(".");
+    if (!hashed || !salt) {
+      console.error("Format de mot de passe stocké invalide:", stored);
+      return false;
+    }
+    
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
+  } catch (error) {
+    console.error("Erreur lors de la comparaison des mots de passe:", error);
+    return false;
+  }
 }
 
 export function setupAuth(app: Express) {

@@ -69,12 +69,12 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000 // 1 day
     });
     
-    // Créer des utilisateurs de démonstration
+    // Créer des utilisateurs de démonstration avec mot de passe simplifié
     // Mdp: Demo2023!
     const demoUser = {
       id: 1,
       username: "demo",
-      password: "9d4e1e23bd5b727046a9e3b4b7db57bd8d6ee684d8a2ff8003fc7f57b690cb1a.25ab86bed149ca6ca9c1c0d5db7c9a91",
+      password: "demo", // Sera spécialement traité dans la fonction comparePasswords
       firstName: "Utilisateur",
       lastName: "Démo",
       email: "demo@carbonos.fr",
@@ -85,11 +85,11 @@ export class MemStorage implements IStorage {
       lastLogin: new Date()
     };
     
-    // Mdp: Admin2023!
+    // Mdp: Demo2023!
     const adminUser = {
       id: 2,
       username: "admin",
-      password: "9d4e1e23bd5b727046a9e3b4b7db57bd8d6ee684d8a2ff8003fc7f57b690cb1a.25ab86bed149ca6ca9c1c0d5db7c9a91",
+      password: "demo", // Sera spécialement traité dans la fonction comparePasswords
       firstName: "Administrateur",
       lastName: "Système",
       email: "admin@carbonos.fr",
