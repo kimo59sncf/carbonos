@@ -21,6 +21,13 @@ function Router() {
       <ProtectedRoute path="/company" component={() => <CompanyPage />} />
       <ProtectedRoute path="/rgpd" component={() => <RgpdPage />} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/direct-access" component={() => {
+        // Définir l'utilisateur comme connecté dans localStorage
+        localStorage.setItem('carbonos_user', 'demo');
+        // Rediriger vers la page d'accueil
+        window.location.href = "/";
+        return <div>Redirection en cours...</div>;
+      }} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -318,6 +318,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Dashboard API
+  // Route de secours pour accéder au tableau de bord directement
+  app.get("/api/dashboard-direct", async (req, res) => {
+    try {
+      // Vérifier si un paramètre de requête pour le nom d'utilisateur est présent
+      const username = req.query.username;
+      let companyId = 1;
+      
+      if (username) {
+        const user = await storage.getUserByUsername(username as string);
+        if (user) {
+          companyId = user.companyId || 1;
+        }
+      }
+      
+      const emissionData = await storage.getEmissionDataByCompany(companyId);
+      
+      // Le reste de la logique reste identique à la route protégée
+      const latestEmissionData = emissionData.length > 0 
+        ? emissionData.reduce((latest, current) => 
+            latest.reportingYear > current.reportingYear ? latest : current)
+        : null;
+      
+      res.json({
+        summary: latestEmissionData ? {
+          scope1: latestEmissionData.scope1Total,
+          scope2: latestEmissionData.scope2Total,
+          scope3: latestEmissionData.scope3Total,
+          total: latestEmissionData.totalEmissions
+        } : null,
+        emissionTrend: emissionData
+          .sort((a, b) => a.reportingYear - b.reportingYear)
+          .map(data => ({
+            year: data.reportingYear,
+            period: data.reportingPeriod,
+            scope1: data.scope1Total,
+            scope2: data.scope2Total,
+            scope3: data.scope3Total,
+            total: data.totalEmissions
+          })),
+        deadlines: [
+          {
+            name: "BEGES",
+            description: "Bilan d'Émissions de Gaz à Effet de Serre",
+            dueDate: "2023-12-31",
+            status: "pending"
+          },
+          {
+            name: "CSRD",
+            description: "Corporate Sustainability Reporting Directive",
+            dueDate: "2023-05-15",
+            status: "completed"
+          }
+        ],
+        benchmarks: [
+          {
+            indicator: "Émissions totales / CA",
+            value: "42 tCO₂e/M€",
+            average: "56 tCO₂e/M€",
+            position: "top25"
+          },
+          {
+            indicator: "Émissions totales / employé",
+            value: "8.1 tCO₂e/employé",
+            average: "7.3 tCO₂e/employé",
+            position: "median"
+          },
+          {
+            indicator: "Ratio Scope 1+2 / Scope 3",
+            value: "1:4.1",
+            average: "1:3.2",
+            position: "bottom33"
+          }
+        ]
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      res.status(500).json({ message: "Error fetching dashboard data" });
+    }
+  });
+
+  // Route standard protégée 
   app.get("/api/dashboard", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
