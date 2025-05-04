@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { insertUserSchema } from "@shared/schema";
 import { Redirect } from "wouter";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Le nom d'utilisateur est requis"),
@@ -39,6 +41,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>("login");
 
   const loginForm = useForm<LoginFormValues>({
@@ -63,8 +66,60 @@ export default function AuthPage() {
     },
   });
 
+  const directLogin = async (username: string, password: string) => {
+    try {
+      console.log("Attempting direct login with:", username);
+      const response = await fetch('/api/direct-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      
+      const result = await response.json();
+      console.log("Direct login result:", result);
+      
+      if (result.success) {
+        // Stocker l'utilisateur dans localStorage comme solution de secours
+        localStorage.setItem('carbonos_user', result.user.username);
+        localStorage.setItem('carbonos_user_data', JSON.stringify(result.user));
+        
+        // Définir un cookie pour la persistance
+        document.cookie = `carbonos_user=${result.user.username}; path=/; max-age=${30*24*60*60}`;
+        
+        // Mettre à jour le state React Query
+        queryClient.setQueryData(["/api/user"], result.user);
+        
+        // Toast de succès
+        toast({
+          title: "Connexion réussie",
+          description: `Bienvenue ${result.user.firstName} ${result.user.lastName}`,
+        });
+        
+        // Rediriger vers la page d'accueil
+        window.location.href = "/";
+      } else {
+        toast({
+          title: "Échec de la connexion",
+          description: result.message || "Erreur d'authentification",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Direct login error:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de se connecter au serveur",
+        variant: "destructive",
+      });
+    }
+  };
+
   const onLoginSubmit = (data: LoginFormValues) => {
-    loginMutation.mutate(data);
+    // Essayer d'abord la méthode directe
+    directLogin(data.username, data.password);
+    
+    // Méthode standard comme solution de secours (si la première échoue silencieusement)
+    // loginMutation.mutate(data);
   };
 
   const onRegisterSubmit = (data: RegisterFormValues) => {

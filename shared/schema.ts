@@ -97,6 +97,7 @@ export const insertEmissionDataSchema = createInsertSchema(emissionData).pick({
   companyId: true,
   reportingPeriod: true,
   reportingYear: true,
+  submittedBy: true,
   scope1Total: true,
   scope2Total: true,
   scope3Total: true,
@@ -119,6 +120,7 @@ export const insertReportSchema = createInsertSchema(reports).pick({
   name: true,
   type: true,
   year: true,
+  createdBy: true,
   data: true,
 });
 
