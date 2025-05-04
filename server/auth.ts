@@ -46,15 +46,8 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Nettoyer la table de session au démarrage pour éviter les problèmes
-  try {
-    storage.sessionStore.clear((err) => {
-      if (err) console.error("Error clearing session store:", err);
-      else console.log("Session store cleared successfully");
-    });
-  } catch (error) {
-    console.error("Failed to clear session store:", error);
-  }
+  // Initialisation standard sans nettoyage forcé
+  console.log("Initializing authentication system...");
   
   const sessionSettings: session.SessionOptions = {
     secret: "carbon-os-secret-key-" + new Date().toISOString().slice(0, 10), // Régénérer à chaque redémarrage

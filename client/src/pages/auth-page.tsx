@@ -155,8 +155,20 @@ export default function AuthPage() {
                             <strong>Mot de passe :</strong> Demo2023!
                           </p>
                           <p className="text-blue-600 mt-1 text-xs">
-                            Note: CarbonOS utilise actuellement une base de données en mémoire. Les comptes créés seront perdus au redémarrage du serveur.
+                            CarbonOS utilise désormais une base de données PostgreSQL pour la persistance des données.
                           </p>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="w-full mt-2 bg-blue-100 hover:bg-blue-200 border-blue-300"
+                            onClick={() => {
+                              loginForm.setValue("username", "demo");
+                              loginForm.setValue("password", "Demo2023!");
+                              loginForm.handleSubmit(onLoginSubmit)();
+                            }}
+                          >
+                            Connexion rapide avec le compte démo
+                          </Button>
                         </div>
                       </div>
                     </div>

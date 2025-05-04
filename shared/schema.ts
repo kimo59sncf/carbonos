@@ -88,6 +88,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   role: true,
   companyId: true,
   consentDataProcessing: true,
+  isActive: true,
 });
 
 export const insertCompanySchema = createInsertSchema(companies);

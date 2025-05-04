@@ -4,10 +4,74 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { insertEmissionDataSchema, insertEmissionDetailSchema, insertReportSchema, insertCompanySchema } from "@shared/schema";
 
+// Fonction pour créer un compte de démonstration si nécessaire
+async function ensureDemoAccountExists() {
+  try {
+    console.log("Vérification du compte de démonstration...");
+    const demoUser = await storage.getUserByUsername("demo");
+    
+    if (!demoUser) {
+      console.log("Création du compte de démonstration...");
+      
+      // Créer l'entreprise de démonstration
+      const demoCompany = await storage.createCompany({
+        name: "CarbonOS Démo",
+        sector: "Technologies de l'information",
+        sectorCode: "J.62",
+        employeeCount: 120,
+        address: "123 Rue de l'Innovation",
+        postalCode: "75008",
+        city: "Paris",
+        country: "France",
+        siret: "98765432100012",
+        dpoName: "Sophie Martin",
+        dpoEmail: "dpo@carbonos.fr",
+        dpoPhone: "+33123456789",
+        dpoIsExternal: false
+      });
+      
+      // Créer l'utilisateur de démonstration
+      await storage.createUser({
+        username: "demo",
+        password: "demo", // Mot de passe simplifié pour la démo
+        firstName: "Utilisateur",
+        lastName: "Démo",
+        email: "demo@carbonos.fr",
+        role: "user",
+        consentDataProcessing: true,
+        isActive: true,
+        companyId: demoCompany.id,
+      });
+      
+      console.log("Compte de démonstration créé avec succès!");
+    } else {
+      console.log("Le compte de démonstration existe déjà.");
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Erreur lors de la création du compte de démonstration:", error);
+    return false;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Créer le compte de démonstration si nécessaire
+  await ensureDemoAccountExists();
+  
   // Test route to check if API is accessible
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", message: "API is working!" });
+  });
+  
+  // Route spéciale pour vérifier le compte de démonstration
+  app.get("/api/demo-account", async (req, res) => {
+    const demoExists = await storage.getUserByUsername("demo");
+    res.json({ 
+      exists: !!demoExists,
+      username: demoExists ? "demo" : null,
+      message: demoExists ? "Compte de démonstration disponible" : "Aucun compte de démonstration"
+    });
   });
   
   // Setup authentication routes
