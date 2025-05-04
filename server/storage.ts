@@ -49,7 +49,9 @@ export class DatabaseStorage implements IStorage {
     // Initialize the session store with PostgreSQL
     this.sessionStore = new PostgresSessionStore({
       pool, 
-      createTableIfMissing: true
+      createTableIfMissing: true,
+      tableName: 'session',  // Nom explicite de la table
+      schemaName: 'public'   // Schéma PostgreSQL
     });
   }
   

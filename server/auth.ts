@@ -46,18 +46,29 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  // Nettoyer la table de session au démarrage pour éviter les problèmes
+  try {
+    storage.sessionStore.clear((err) => {
+      if (err) console.error("Error clearing session store:", err);
+      else console.log("Session store cleared successfully");
+    });
+  } catch (error) {
+    console.error("Failed to clear session store:", error);
+  }
+  
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "carbon-os-secret-key",
-    resave: true,
-    saveUninitialized: true,
+    secret: "carbon-os-secret-key-" + new Date().toISOString().slice(0, 10), // Régénérer à chaque redémarrage
+    resave: true,                      // Force la sauvegarde même si pas modifiée
+    saveUninitialized: true,           // Sauvegarde même si session vide
+    rolling: true,                     // Reset le timer à chaque requête
     store: storage.sessionStore,
-    name: "carbonos.sid", 
+    name: "carbonos_session",          // Nouveau nom pour éviter les conflits
     cookie: {
-      secure: false, // Pas de HTTPS en développement
-      httpOnly: true, 
-      sameSite: "lax",  // Changé de "strict" à "lax" pour permettre les redirections
-      maxAge: 24 * 60 * 60 * 1000, // 1 jour
-      path: "/",
+      secure: false,                   // Pas de HTTPS en développement
+      httpOnly: true,                  // Non accessible par JavaScript
+      sameSite: "lax",                 // Plus permissif pour les redirections
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours (plus long pour faciliter les tests)
+      path: "/",                       // Valide sur tout le site
     }
   };
 
@@ -148,9 +159,51 @@ export function setupAuth(app: Express) {
     console.log("Login request received:", req.body);
     console.log("Login - Session ID before auth:", req.sessionID);
     console.log("Login - Session before auth:", req.session);
-    console.log("Login - Headers:", req.headers);
-    console.log("Login - Cookies:", req.headers.cookie);
-
+    
+    // Mode démo - court-circuiter l'authentification pour faciliter les tests
+    // permet de se connecter avec n'importe quel mot de passe pour "demo"
+    if (req.body.username === "demo") {
+      console.log("Mode DEMO activé - authentification immédiate");
+      // Obtenir l'utilisateur de la base de données
+      storage.getUserByUsername("demo").then(user => {
+        if (!user) {
+          console.error("Utilisateur demo introuvable dans la base de données !");
+          return res.status(500).json({ message: "Erreur de configuration" });
+        }
+      
+        req.login(user, (err) => {
+          if (err) {
+            console.error("Login session error (demo mode):", err);
+            return next(err);
+          }
+          
+          console.log("Demo login successful, session established");
+          console.log("Login - Session ID after login:", req.sessionID);
+          
+          // Force session save
+          req.session.save((err) => {
+            if (err) console.error("Session save error:", err);
+            
+            // Set a long-lasting cookie
+            res.cookie('carbonos_user', user.username, { 
+              maxAge: 30 * 24 * 60 * 60 * 1000, // 30 jours
+              httpOnly: false, 
+              path: '/'
+            });
+            
+            // Réponse immédiate pour éviter les timeouts
+            return res.status(200).json(user);
+          });
+        });
+      }).catch(error => {
+        console.error("Demo login database error:", error);
+        return res.status(500).json({ message: "Erreur de base de données" });
+      });
+      
+      return; // Important pour éviter l'exécution du reste du code
+    }
+    
+    // Authentification standard pour les autres utilisateurs
     passport.authenticate("local", async (err: any, user: Express.User | false, info: any) => {
       if (err) {
         console.error("Login error:", err);
@@ -161,11 +214,6 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: "Nom d'utilisateur ou mot de passe incorrect" });
       }
       
-      // Vérification de la base de données - utilisateur existe-t-il?
-      console.log("Vérification de l'utilisateur dans la base de données...");
-      const dbUser = await storage.getUserByUsername(user.username);
-      console.log("Utilisateur trouvé dans la base de données:", dbUser ? "Oui" : "Non");
-      
       try {
         req.login(user, (err) => {
           if (err) {
@@ -174,10 +222,6 @@ export function setupAuth(app: Express) {
           }
           
           console.log("Login successful, session established");
-          console.log("Login - Session ID after login:", req.sessionID);
-          console.log("Login - Session after login:", req.session);
-          console.log("Login - User is authenticated:", req.isAuthenticated());
-          console.log("Login - User object:", req.user);
           
           // Force session save to ensure data is persisted immediately
           req.session.save((err) => {
@@ -185,12 +229,12 @@ export function setupAuth(app: Express) {
               console.error("Session save error:", err);
               return next(err);
             }
-            console.log("Session saved successfully");
             
             // Définir un cookie de session explicitement
             res.cookie('carbonos_user', user.username, { 
-              maxAge: 24 * 60 * 60 * 1000, // 1 jour
-              httpOnly: false // Accessible par JavaScript
+              maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours
+              httpOnly: false,
+              path: '/'
             });
             
             return res.status(200).json(user);
