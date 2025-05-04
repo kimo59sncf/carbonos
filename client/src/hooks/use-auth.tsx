@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect } from "react";
 import {
   useQuery,
   useMutation,
@@ -32,16 +32,31 @@ function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
-  } = useQuery<SelectUser | undefined, Error>({
+    refetch
+  } = useQuery<SelectUser | undefined>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
-    onSuccess: (data) => {
-      console.log("Auth user query successful:", data);
-    },
-    onError: (error) => {
-      console.error("Auth user query error:", error);
-    }
+    retry: 1,
+    refetchOnWindowFocus: false
   });
+  
+  // Essayer de restaurer l'authentification à partir du localStorage
+  useEffect(() => {
+    const checkStoredAuth = async () => {
+      if (!user) {
+        const storedUsername = localStorage.getItem('carbonos_user');
+        if (storedUsername) {
+          console.log("Trying to restore authentication from localStorage:", storedUsername);
+          document.cookie = `carbonos_user=${storedUsername}; path=/; max-age=86400`;
+          // Refetch user data after setting the cookie
+          await new Promise(resolve => setTimeout(resolve, 100));
+          refetch();
+        }
+      }
+    };
+    
+    checkStoredAuth();
+  }, [user, refetch]);
 
   // Login mutation
   const loginMutation = useMutation({
@@ -66,6 +81,14 @@ function AuthProvider({ children }: { children: ReactNode }) {
         title: "Connexion réussie",
         description: `Bienvenue ${user.firstName} ${user.lastName}`,
       });
+      
+      // Définir notre propre cookie local pour garder l'authentification même si la session est perdue
+      document.cookie = `carbonos_user=${user.username}; path=/; max-age=86400`;
+      
+      // Store in localStorage too for redundancy
+      localStorage.setItem('carbonos_user', user.username);
+      
+      console.log("Cookie and localStorage set with username:", user.username);
       
       // Ajouter un délai pour laisser le temps aux cookies de s'enregistrer
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -106,6 +129,14 @@ function AuthProvider({ children }: { children: ReactNode }) {
         description: "Votre compte a été créé avec succès",
       });
       
+      // Définir notre propre cookie local pour garder l'authentification même si la session est perdue
+      document.cookie = `carbonos_user=${user.username}; path=/; max-age=86400`;
+      
+      // Store in localStorage too for redundancy
+      localStorage.setItem('carbonos_user', user.username);
+      
+      console.log("Cookie and localStorage set with username:", user.username);
+      
       // Ajouter un délai pour laisser le temps aux cookies de s'enregistrer
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -131,10 +162,18 @@ function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       console.log("Logout mutation success, clearing user data");
       queryClient.setQueryData(["/api/user"], null);
+      
+      // Supprimer les cookies et localStorage
+      document.cookie = "carbonos_user=; path=/; max-age=0";
+      localStorage.removeItem('carbonos_user');
+      
       toast({
         title: "Déconnexion réussie",
         description: "Vous avez été déconnecté avec succès",
       });
+      
+      // Rediriger vers la page d'authentification
+      window.location.href = "/auth";
     },
     onError: (error: Error) => {
       console.error("Logout mutation error:", error);

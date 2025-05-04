@@ -148,8 +148,10 @@ export function setupAuth(app: Express) {
     console.log("Login request received:", req.body);
     console.log("Login - Session ID before auth:", req.sessionID);
     console.log("Login - Session before auth:", req.session);
+    console.log("Login - Headers:", req.headers);
+    console.log("Login - Cookies:", req.headers.cookie);
 
-    passport.authenticate("local", (err: any, user: Express.User | false, info: any) => {
+    passport.authenticate("local", async (err: any, user: Express.User | false, info: any) => {
       if (err) {
         console.error("Login error:", err);
         return next(err);
@@ -159,27 +161,45 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: "Nom d'utilisateur ou mot de passe incorrect" });
       }
       
-      req.login(user, (err) => {
-        if (err) {
-          console.error("Login session error:", err);
-          return next(err);
-        }
-        
-        console.log("Login successful, session established");
-        console.log("Login - Session ID after login:", req.sessionID);
-        console.log("Login - Session after login:", req.session);
-        console.log("Login - User is authenticated:", req.isAuthenticated());
-        
-        // Force session save to ensure data is persisted immediately
-        req.session.save((err) => {
+      // Vérification de la base de données - utilisateur existe-t-il?
+      console.log("Vérification de l'utilisateur dans la base de données...");
+      const dbUser = await storage.getUserByUsername(user.username);
+      console.log("Utilisateur trouvé dans la base de données:", dbUser ? "Oui" : "Non");
+      
+      try {
+        req.login(user, (err) => {
           if (err) {
-            console.error("Session save error:", err);
+            console.error("Login session error:", err);
             return next(err);
           }
-          console.log("Session saved successfully");
-          return res.status(200).json(user);
+          
+          console.log("Login successful, session established");
+          console.log("Login - Session ID after login:", req.sessionID);
+          console.log("Login - Session after login:", req.session);
+          console.log("Login - User is authenticated:", req.isAuthenticated());
+          console.log("Login - User object:", req.user);
+          
+          // Force session save to ensure data is persisted immediately
+          req.session.save((err) => {
+            if (err) {
+              console.error("Session save error:", err);
+              return next(err);
+            }
+            console.log("Session saved successfully");
+            
+            // Définir un cookie de session explicitement
+            res.cookie('carbonos_user', user.username, { 
+              maxAge: 24 * 60 * 60 * 1000, // 1 jour
+              httpOnly: false // Accessible par JavaScript
+            });
+            
+            return res.status(200).json(user);
+          });
         });
-      });
+      } catch (loginError) {
+        console.error("Error in login process:", loginError);
+        return next(loginError);
+      }
     })(req, res, next);
   });
 
@@ -190,19 +210,53 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", async (req, res) => {
     console.log("GET /api/user - Session ID:", req.sessionID);
     console.log("GET /api/user - Is authenticated:", req.isAuthenticated());
     console.log("GET /api/user - User:", req.user);
     console.log("GET /api/user - Session:", req.session);
     console.log("GET /api/user - Cookies:", req.headers.cookie);
     
-    if (!req.isAuthenticated()) {
-      console.log("GET /api/user - Not authenticated, returning 401");
-      return res.sendStatus(401);
+    // Vérifier l'authentification standard
+    if (req.isAuthenticated()) {
+      console.log("GET /api/user - Authenticated via session, returning user data");
+      return res.json(req.user);
     }
     
-    console.log("GET /api/user - Authenticated, returning user data");
-    res.json(req.user);
+    // Solution de secours - vérifier le cookie personnalisé
+    const cookies = req.headers.cookie;
+    if (cookies && cookies.includes('carbonos_user=')) {
+      try {
+        // Extraire le nom d'utilisateur du cookie
+        const usernameCookie = cookies.split(';')
+          .find(cookie => cookie.trim().startsWith('carbonos_user='));
+        
+        if (usernameCookie) {
+          const username = usernameCookie.split('=')[1];
+          console.log("GET /api/user - Cookie username found:", username);
+          
+          // Chercher l'utilisateur dans la DB
+          const user = await storage.getUserByUsername(username);
+          
+          if (user) {
+            console.log("GET /api/user - User found via cookie, authenticating session");
+            // Authentifier l'utilisateur manuellement
+            req.login(user, (err) => {
+              if (err) {
+                console.error("Error logging in user via cookie:", err);
+                return res.sendStatus(401);
+              }
+              return res.json(user);
+            });
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Error processing cookie auth:", error);
+      }
+    }
+    
+    console.log("GET /api/user - Not authenticated, returning 401");
+    return res.sendStatus(401);
   });
 }
