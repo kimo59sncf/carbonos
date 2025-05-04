@@ -11,6 +11,7 @@ import EmissionsPage from "@/pages/emissions-page";
 import ReportsPage from "@/pages/reports-page";
 import CompanyPage from "@/pages/company-page";
 import RgpdPage from "@/pages/rgpd-page";
+import EmergencyPage from "@/pages/emergency-page";
 
 function Router() {
   return (
@@ -28,6 +29,7 @@ function Router() {
         window.location.href = "/";
         return <div>Redirection en cours...</div>;
       }} />
+      <Route path="/emergency" component={EmergencyPage} />
       <Route component={NotFound} />
     </Switch>
   );

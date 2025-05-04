@@ -227,6 +227,31 @@ export default function AuthPage() {
                         </div>
                       </div>
                     </div>
+                    
+                    <div className="rounded-md bg-amber-50 p-4 mb-4 border border-amber-200">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-amber-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.5 4.5 0 00-3.66 2.814 1 1 0 002.004.4 2.5 2.5 0 015.312 0 1 1 0 002.004-.4A4.5 4.5 0 0011 5.092V5z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-amber-800 text-sm font-medium">Problème de connexion?</h3>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-sm text-amber-700">
+                        <p>Si vous ne parvenez pas à vous connecter, essayez notre accès d'urgence qui ne nécessite pas d'authentification.</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full mt-2 bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-800"
+                          onClick={() => window.location.href = "/emergency"}
+                        >
+                          Accéder au mode d'urgence
+                        </Button>
+                      </div>
+                    </div>
                     <Button
                       type="submit"
                       className="w-full"
