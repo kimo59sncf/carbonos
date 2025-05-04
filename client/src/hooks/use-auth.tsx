@@ -57,14 +57,21 @@ function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    onSuccess: (user: SelectUser) => {
+    onSuccess: async (user: SelectUser) => {
       console.log("Login mutation success, updating user data:", user);
       queryClient.setQueryData(["/api/user"], user);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
         title: "Connexion réussie",
         description: `Bienvenue ${user.firstName} ${user.lastName}`,
       });
+      
+      // Ajouter un délai pour laisser le temps aux cookies de s'enregistrer
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Force la page à se recharger pour s'assurer que les cookies sont correctement appliqués
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       console.error("Login mutation error:", error);
@@ -90,13 +97,20 @@ function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    onSuccess: (user: SelectUser) => {
+    onSuccess: async (user: SelectUser) => {
       console.log("Registration mutation success, updating user data:", user);
       queryClient.setQueryData(["/api/user"], user);
+      
       toast({
         title: "Inscription réussie",
         description: "Votre compte a été créé avec succès",
       });
+      
+      // Ajouter un délai pour laisser le temps aux cookies de s'enregistrer
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Force la page à se recharger pour s'assurer que les cookies sont correctement appliqués
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       console.error("Registration mutation error:", error);
