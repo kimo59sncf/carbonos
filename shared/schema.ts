@@ -1,10 +1,10 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, varchar, date } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Users table
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   firstName: text("first_name").notNull(),
@@ -12,14 +12,14 @@ export const users = pgTable("users", {
   email: text("email").notNull(),
   role: text("role").notNull().default("user"),
   companyId: integer("company_id"),
-  lastLogin: timestamp("last_login"),
-  consentDataProcessing: boolean("consent_data_processing").default(false),
-  isActive: boolean("is_active").default(true),
+  lastLogin: integer("last_login", { mode: 'timestamp' }),
+  consentDataProcessing: integer("consent_data_processing", { mode: 'boolean' }).default(false),
+  isActive: integer("is_active", { mode: 'boolean' }).default(true),
 });
 
 // Companies table
-export const companies = pgTable("companies", {
-  id: serial("id").primaryKey(),
+export const companies = sqliteTable("companies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   sector: text("sector"),
   sectorCode: text("sector_code"),
@@ -32,19 +32,19 @@ export const companies = pgTable("companies", {
   dpoName: text("dpo_name"),
   dpoEmail: text("dpo_email"),
   dpoPhone: text("dpo_phone"),
-  dpoIsExternal: boolean("dpo_is_external"),
+  dpoIsExternal: integer("dpo_is_external", { mode: 'boolean' }),
 });
 
 // Emission data table
-export const emissionData = pgTable("emission_data", {
-  id: serial("id").primaryKey(),
+export const emissionData = sqliteTable("emission_data", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   companyId: integer("company_id").notNull(),
   reportingPeriod: text("reporting_period").notNull(),
   reportingYear: integer("reporting_year").notNull(),
   submittedBy: integer("submitted_by"),
-  submittedAt: timestamp("submitted_at"),
+  submittedAt: integer("submitted_at", { mode: 'timestamp' }),
   validatedBy: integer("validated_by"),
-  validatedAt: timestamp("validated_at"),
+  validatedAt: integer("validated_at", { mode: 'timestamp' }),
   status: text("status").default("draft"),
   scope1Total: integer("scope1_total").default(0),
   scope2Total: integer("scope2_total").default(0),
@@ -54,8 +54,8 @@ export const emissionData = pgTable("emission_data", {
 });
 
 // Emission details table
-export const emissionDetails = pgTable("emission_details", {
-  id: serial("id").primaryKey(),
+export const emissionDetails = sqliteTable("emission_details", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   emissionDataId: integer("emission_data_id").notNull(),
   source: text("source").notNull(),
   scope: text("scope").notNull(),
@@ -66,16 +66,16 @@ export const emissionDetails = pgTable("emission_details", {
 });
 
 // Reports table
-export const reports = pgTable("reports", {
-  id: serial("id").primaryKey(),
+export const reports = sqliteTable("reports", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   companyId: integer("company_id").notNull(),
   name: text("name").notNull(),
   type: text("type").notNull(),
   year: integer("year").notNull(),
   createdBy: integer("created_by"),
-  createdAt: timestamp("created_at"),
+  createdAt: integer("created_at", { mode: 'timestamp' }),
   status: text("status").default("draft"),
-  data: json("data"),
+  data: text("data", { mode: 'json' }),
 });
 
 // Create insert schemas for Zod validation

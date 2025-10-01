@@ -1,13 +1,10 @@
 import { users, type User, type InsertUser, companies, type Company, type InsertCompany, emissionData, type EmissionData, type InsertEmissionData, emissionDetails, type EmissionDetail, type InsertEmissionDetail, reports, type Report, type InsertReport } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import connectPg from "connect-pg-simple";
 import { db } from "./db";
-import { pool } from "./db";
 import { eq, asc, desc } from "drizzle-orm";
 
 const MemoryStore = createMemoryStore(session);
-const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // User methods
@@ -46,12 +43,9 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    // Initialize the session store with PostgreSQL
-    this.sessionStore = new PostgresSessionStore({
-      pool, 
-      createTableIfMissing: true,
-      tableName: 'session',  // Nom explicite de la table
-      schemaName: 'public'   // Schéma PostgreSQL
+    // Initialize the session store with memory store for SQLite
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
     });
   }
   

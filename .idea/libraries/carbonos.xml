@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="carbonos">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/attached_assets/carbonos.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

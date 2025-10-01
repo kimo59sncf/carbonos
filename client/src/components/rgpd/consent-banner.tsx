@@ -21,7 +21,7 @@ export function ConsentBanner({ onAccept }: ConsentBannerProps) {
             </p>
           </div>
           <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-3">
-            <Dialog open={cookieDialogOpen} onOpenChange={setCookieDialogOpen}>
+            <Dialog key="cookie-dialog" open={cookieDialogOpen} onOpenChange={setCookieDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
                   Paramétrer les cookies
@@ -42,7 +42,7 @@ export function ConsentBanner({ onAccept }: ConsentBannerProps) {
                     </div>
                     <div className="bg-neutral-200 px-2 py-1 rounded text-xs font-medium">Obligatoires</div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">Cookies analytiques</h4>
@@ -53,7 +53,7 @@ export function ConsentBanner({ onAccept }: ConsentBannerProps) {
                       <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
                     </label>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">Cookies marketing</h4>

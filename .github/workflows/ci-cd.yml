@@ -1,0 +1,294 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: 18.17.0
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Tests et qualité du code
+  quality:
+    name: Code Quality & Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+
+  # Tests end-to-end
+  e2e:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start application
+        run: npm start &
+
+      - name: Wait for application to be ready
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:3000/api/health; do sleep 1; done'
+
+      - name: Run E2E tests
+        run: npx playwright test
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test results (JSON)
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 30
+
+  # Build et déploiement staging
+  build-and-deploy-staging:
+    name: Build & Deploy to Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [quality, e2e]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Run bundle analyzer
+        run: npm run analyze
+        continue-on-error: true
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
+          # Ici, déployer vers l'environnement de staging
+          # Exemple avec Vercel, Netlify, ou serveur personnalisé
+
+      - name: Run smoke tests on staging
+        run: |
+          echo "Running smoke tests on staging..."
+          # Tests de fumée sur l'environnement de staging
+
+  # Build et déploiement production
+  build-and-deploy-production:
+    name: Build & Deploy to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [quality, e2e]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Run production tests
+        run: |
+          echo "Running production-specific tests..."
+          # Tests spécifiques à la production
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment..."
+          # Ici, déployer vers l'environnement de production
+
+      - name: Run post-deployment tests
+        run: |
+          echo "Running post-deployment verification..."
+          # Vérifications après déploiement
+
+      - name: Notify deployment success
+        run: |
+          echo "Deployment completed successfully!"
+          # Notification (Slack, Teams, etc.)
+
+  # Sécurité et analyse
+  security:
+    name: Security & Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        run: npm audit --audit-level=moderate
+
+      - name: Run dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'CarbonOS'
+          path: .
+          format: 'ALL'
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: reports/
+
+  # Performance monitoring
+  performance:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build-and-deploy-production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Lighthouse CLI
+        run: npm install -g @lhci/cli@0.12.x
+
+      - name: Run Lighthouse CI
+        run: |
+          lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Upload performance reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-report
+          path: .lighthouseci/
+          retention-days: 30
+
+  # Nettoyage et notifications
+  cleanup:
+    name: Cleanup & Notifications
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [quality, e2e, build-and-deploy-staging, build-and-deploy-production, security, performance]
+
+    steps:
+      - name: Generate workflow summary
+        run: |
+          echo "## 🚀 CarbonOS CI/CD Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Ajouter le statut de chaque job
+          echo "| quality | ${{ needs.quality.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| e2e | ${{ needs.e2e.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| build-and-deploy-staging | ${{ needs.build-and-deploy-staging.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| build-and-deploy-production | ${{ needs.build-and-deploy-production.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| security | ${{ needs.security.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| performance | ${{ needs.performance.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Send notification on failure
+        if: failure()
+        run: |
+          echo "Pipeline failed! Sending notification..."
+          # Intégration avec Slack, Teams, Discord, etc.
+
+      - name: Send notification on success
+        if: success()
+        run: |
+          echo "Pipeline completed successfully!"
+          # Notification de succès

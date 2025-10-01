@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1759325382694",
+    "email": "test@carbonos.com",
+    "password": "dGVzdDEyMw==",
+    "firstName": "Test",
+    "lastName": "User",
+    "company": "Test Company",
+    "createdAt": "2025-10-01T13:29:42.694Z"
+  },
+  {
+    "id": "1759325669472",
+    "email": "mahouachi.k2@gmail.com",
+    "password": "S2FyaW0zMjFA",
+    "firstName": "karim2",
+    "lastName": "mahouachi2",
+    "company": "mk-dev2",
+    "createdAt": "2025-10-01T13:34:29.472Z"
+  }
+]
